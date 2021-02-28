@@ -11,8 +11,8 @@
 static GstElement *pipeline;
 static GstBus *bus;
 static StarfishDirectMediaPlayer *playerctx;
-static DirectMediaAudioConfig audioConfig;
-static DirectMediaVideoConfig videoConfig;
+static DirectMediaAudioConfig *audioConfig;
+static DirectMediaVideoConfig *videoConfig;
 static bool audioEosEmitted, videoEosEmitted;
 
 static void cb_message(GstBus *bus, GstMessage *message, gpointer user_data);
@@ -23,6 +23,10 @@ static bool playerOpen();
 int gst_sample_create()
 {
     playerctx = StarfishDirectMediaPlayer_Create(WEBOS_APPID);
+    audioEosEmitted = false;
+    videoEosEmitted = false;
+    audioConfig = NULL;
+    videoConfig = NULL;
     return 0;
 }
 
@@ -36,7 +40,6 @@ int gst_sample_initialize()
 {
     GstStateChangeReturn ret;
 
-    GstElement *audiosink, *videosink;
     pipeline = gst_parse_launch("curlhttpsrc location=http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 ! qtdemux name=demux \
     demux.audio_0 ! queue ! aacparse ! audio/mpeg,mpegversion=4,stream-format=adts ! appsink name=audsink \
     demux.video_0 ! queue ! h264parse config-interval=-1 ! video/x-h264,stream-format=byte-stream,alignment=nal ! appsink name=vidsink",
@@ -44,6 +47,7 @@ int gst_sample_initialize()
 
     g_assert(pipeline);
 
+    GstElement *audiosink, *videosink;
     audiosink = gst_bin_get_by_name(GST_BIN(pipeline), "audsink");
     g_assert(audiosink);
 
@@ -89,6 +93,8 @@ int gst_sample_finalize()
 
 void audioEos(GstAppSink *appsink, gpointer user_data)
 {
+    free(audioConfig);
+    audioConfig = NULL;
     audioEosEmitted = true;
     playerEos();
 }
@@ -104,17 +110,9 @@ GstFlowReturn audioNewPreroll(GstAppSink *appsink, gpointer user_data)
 
     gst_sample_unref(preroll);
 
-    // NDL_DIRECTAUDIO_DATA_INFO info = {
-    //     .numChannel = channels,
-    //     .bitPerSample = 16,
-    //     .nodelay = 1,
-    //     .upperThreshold = 48,
-    //     .lowerThreshold = 16,
-    //     .channel = NDL_DIRECTAUDIO_CH_MAIN,
-    //     .srcType = NDL_DIRECTAUDIO_SRC_TYPE_AAC,
-    //     .samplingFreq = NDL_DIRECTAUDIO_SAMPLING_FREQ_OF(rate)};
-    DirectMediaAudioConfig config = {};
-    audioConfig = config;
+    DirectMediaAudioConfig config = {DirectMediaAudioCodecAAC, channels, 16, rate};
+    audioConfig = malloc(sizeof(DirectMediaAudioConfig));
+    memcpy(audioConfig, &config, sizeof(DirectMediaAudioConfig));
     if (!playerOpen())
     {
         return GST_FLOW_ERROR;
@@ -140,6 +138,8 @@ GstFlowReturn audioNewSample(GstAppSink *appsink, gpointer user_data)
 
 void videoEos(GstAppSink *appsink, gpointer user_data)
 {
+    free(videoConfig);
+    videoConfig = NULL;
     videoEosEmitted = true;
     playerEos();
 }
@@ -156,8 +156,9 @@ GstFlowReturn videoNewPreroll(GstAppSink *appsink, gpointer user_data)
 
     gst_sample_unref(preroll);
 
-    DirectMediaVideoConfig config = {width, height};
-    videoConfig = config;
+    DirectMediaVideoConfig config = {DirectMediaVideoCodecH264, width, height};
+    videoConfig = malloc(sizeof(DirectMediaVideoConfig));
+    memcpy(videoConfig, &config, sizeof(DirectMediaVideoConfig));
     if (!playerOpen())
     {
         return GST_FLOW_ERROR;
@@ -203,7 +204,7 @@ void cb_message(GstBus *bus, GstMessage *message, gpointer user_data)
 
 void playerEos()
 {
-    if (audioEos && videoEos)
+    if (audioEosEmitted && videoEosEmitted)
     {
         StarfishDirectMediaPlayer_Close(playerctx);
     }
@@ -211,6 +212,9 @@ void playerEos()
 
 bool playerOpen()
 {
-    StarfishDirectMediaPlayer_Open(playerctx, audioConfig, videoConfig);
+    if (audioConfig && videoConfig)
+    {
+        return StarfishDirectMediaPlayer_Open(playerctx, audioConfig, videoConfig);
+    }
     return true;
 }
