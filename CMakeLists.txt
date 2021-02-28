@@ -8,30 +8,31 @@ set(PROJECT_DESCRIPTION "Native API Development Library for webOS")
 set(PROJECT_AUTHOR "Mariotaku Lee")
 set(PROJECT_URL "https://github.com/webosbrew/libndl")
 
-set(PROJECT_VERSION_MAJOR 1)
-set(PROJECT_VERSION_MINOR 0)
-set(PROJECT_VERSION_PATCH 0)
-set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
-
 set(BIN_INSTALL_DIR bin CACHE STRING "Binary installation directory relative to the install prefix")
 set(LIB_INSTALL_DIR lib CACHE STRING "Library installation directory relative to the install prefix")
 set(INCLUDE_INSTALL_DIR include CACHE STRING "Header installation directory relative to the install prefix")
 
-set(HEADERS "include/Acb.h")
-
 add_library(Acb SHARED IMPORTED)
 
 set_target_properties(Acb PROPERTIES
-    PUBLIC_HEADER         ${HEADERS}
-    VERSION               ${PROJECT_VERSION}
+    PUBLIC_HEADER         ${CMAKE_SOURCE_DIR}/include/Acb/Acb.h
     IMPORTED_LOCATION     ${CMAKE_SOURCE_DIR}/lib/libAcb.so.1
 )
-target_include_directories(Acb SYSTEM INTERFACE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(Acb SYSTEM INTERFACE ${CMAKE_SOURCE_DIR}/include/Acb)
 
-# Add folder where are supportive functions
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/utils/cmake)
+add_library(StarfishMediaAPIs SHARED IMPORTED)
+
+set_target_properties(StarfishMediaAPIs PROPERTIES
+    PUBLIC_HEADER         ${CMAKE_SOURCE_DIR}/include/playerAPIs/StarfishMediaAPIs.h
+    IMPORTED_LOCATION     ${CMAKE_SOURCE_DIR}/lib/libplayerAPIs.so.1
+)
+target_include_directories(StarfishMediaAPIs SYSTEM INTERFACE ${CMAKE_SOURCE_DIR}/include/playerAPIs)
+target_link_libraries(StarfishMediaAPIs INTERFACE glib-2.0)
 
 # Don't include samples if used as library
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    # Add folder where are supportive functions
+    set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/utils/cmake)
+
     add_subdirectory(samples)
 endif()

@@ -7,20 +7,20 @@ namespace ACB
 {
     enum PlayerType : long
     {
-        GROUP = 0,
-        VIDEO = 1,
-        VIDEO_UNMUTED_AFTER_PLAYING = 2,
-        AUDIO = 3,
-        HTML5_AUDIO = 4,
-        TV = 5,
-        EXT_INPUT = 6,
-        DVR = 7,
-        VCS = 8,
-        DIRECT_VIDEO = 9,
-        DIRECT_AUDIO = 10,
-        MSE = 11,
-        QT_DVR = 12,
-        PHOTO = 13,
+        GROUP = 0L,
+        VIDEO,
+        VIDEO_UNMUTED_AFTER_PLAYING,
+        AUDIO,
+        HTML5_AUDIO,
+        TV,
+        EXT_INPUT,
+        DVR,
+        VCS,
+        DIRECT_VIDEO,
+        DIRECT_AUDIO,
+        MSE,
+        QT_DVR,
+        PHOTO,
     };
 
     enum AppState : long
@@ -65,17 +65,20 @@ namespace ACB
 class Acb
 {
 public:
+    Acb();
+    ~Acb();
+    
     bool initialize(long playerType, std::string appId, std::function<void(long, long, long, long, const char *)> handler);
     long getAcbId();
-    void setMediaId(std::string mediaId);
-    void setState(long appState, long playState, long *taskId = nullptr);
-    void setDisplayWindow(long x, long y, long w, long h, bool fullScreen, long *taskId = nullptr);
-    void setCustomDisplayWindow(long in_x, long in_y, long in_w, long in_h, long out_x, long out_y, long out_w, long out_h, bool fullScreen, long *taskId = nullptr);
+    bool setMediaId(std::string mediaId);
+    bool setState(long appState, long playState, long *taskId = nullptr);
+    bool setDisplayWindow(long x, long y, long w, long h, bool fullScreen, long *taskId = nullptr);
+    bool setCustomDisplayWindow(long in_x, long in_y, long in_w, long in_h, long out_x, long out_y, long out_w, long out_h, bool fullScreen, long *taskId = nullptr);
     void setMediaAudioData(std::string param, long *taskId = nullptr);
     void setMediaVideoData(std::string param, long *taskId = nullptr);
-    void setSubWindowInfo(std::string param, long *taskId = nullptr);
+    long setSubWindowInfo(std::string param, long *taskId = nullptr);
     void changePlayerType(long playerType);
-    void connectDass(long, long *taskId = nullptr);
+    void connectDass(long = 0, long *taskId = nullptr);
     void disconnectDass(long *taskId = nullptr);
     void setVsmInfo(long sinkType, long dassAction, long sinkPurpose);
     void startMute(bool audio, bool video, long *taskId = nullptr);

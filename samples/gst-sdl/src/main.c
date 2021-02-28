@@ -807,8 +807,9 @@ void gears_frame(void *userdata)
 
 int main(int argc, char *argv[])
 {
-    REDIR_STDOUT("ndl-gst-wayland");
+    REDIR_STDOUT("starfish-direct");
 
+    gst_sample_create();
     gst_init(&argc, &argv);
 
     int w, h;
@@ -884,6 +885,7 @@ int main(int argc, char *argv[])
         gst_sample_finalize();
     }
 
+    gst_sample_destroy();
     return 0;
 }
 

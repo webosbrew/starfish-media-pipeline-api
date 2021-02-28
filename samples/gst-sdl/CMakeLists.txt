@@ -12,14 +12,18 @@ pkg_check_modules(OpenGL REQUIRED IMPORTED_TARGET egl glesv2)
 pkg_check_modules(GStreamer REQUIRED IMPORTED_TARGET gstreamer-1.0 gstreamer-app-1.0)
 pkg_check_modules(json REQUIRED IMPORTED_TARGET json-c)
 
-add_executable(gst-sdl src/main.c src/acb_sample.cpp)
+add_executable(gst-sdl 
+src/main.c
+src/gst_sample.c
+src/StarfishDirectMediaPlayer.cpp
+)
 
 target_compile_definitions(gst-sdl PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
 target_include_directories(gst-sdl PRIVATE ${CMAKE_SOURCE_DIR}/utils/include)
 
 target_link_libraries(gst-sdl PRIVATE
  PkgConfig::SDL2 PkgConfig::OpenGL PkgConfig::GStreamer
- Acb
+ Acb StarfishMediaAPIs
  m
 )
 

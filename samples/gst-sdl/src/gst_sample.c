@@ -4,13 +4,33 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
-#include <NDL_directmedia.h>
+#include "StarfishDirectMediaPlayer.h"
 
 static GstElement *pipeline;
 static GstBus *bus;
+static StarfishDirectMediaPlayer *playerctx;
+static DirectMediaAudioConfig audioConfig;
+static DirectMediaVideoConfig videoConfig;
+static bool audioEosEmitted, videoEosEmitted;
 
 static void cb_message(GstBus *bus, GstMessage *message, gpointer user_data);
+
+static void playerEos();
+static bool playerOpen();
+
+int gst_sample_create()
+{
+    playerctx = StarfishDirectMediaPlayer_Create(WEBOS_APPID);
+    return 0;
+}
+
+int gst_sample_destroy()
+{
+    StarfishDirectMediaPlayer_Destroy(playerctx);
+    return 0;
+}
 
 int gst_sample_initialize()
 {
@@ -69,7 +89,8 @@ int gst_sample_finalize()
 
 void audioEos(GstAppSink *appsink, gpointer user_data)
 {
-    NDL_DirectAudioClose();
+    audioEosEmitted = true;
+    playerEos();
 }
 
 GstFlowReturn audioNewPreroll(GstAppSink *appsink, gpointer user_data)
@@ -83,16 +104,18 @@ GstFlowReturn audioNewPreroll(GstAppSink *appsink, gpointer user_data)
 
     gst_sample_unref(preroll);
 
-    NDL_DIRECTAUDIO_DATA_INFO info = {
-        .numChannel = channels,
-        .bitPerSample = 16,
-        .nodelay = 1,
-        .upperThreshold = 48,
-        .lowerThreshold = 16,
-        .channel = NDL_DIRECTAUDIO_CH_MAIN,
-        .srcType = NDL_DIRECTAUDIO_SRC_TYPE_AAC,
-        .samplingFreq = NDL_DIRECTAUDIO_SAMPLING_FREQ_OF(rate)};
-    if (NDL_DirectAudioOpen(&info) == -1)
+    // NDL_DIRECTAUDIO_DATA_INFO info = {
+    //     .numChannel = channels,
+    //     .bitPerSample = 16,
+    //     .nodelay = 1,
+    //     .upperThreshold = 48,
+    //     .lowerThreshold = 16,
+    //     .channel = NDL_DIRECTAUDIO_CH_MAIN,
+    //     .srcType = NDL_DIRECTAUDIO_SRC_TYPE_AAC,
+    //     .samplingFreq = NDL_DIRECTAUDIO_SAMPLING_FREQ_OF(rate)};
+    DirectMediaAudioConfig config = {};
+    audioConfig = config;
+    if (!playerOpen())
     {
         return GST_FLOW_ERROR;
     }
@@ -108,7 +131,7 @@ GstFlowReturn audioNewSample(GstAppSink *appsink, gpointer user_data)
     GstMapInfo info;
     gst_buffer_map(buf, &info, GST_MAP_READ);
 
-    NDL_DirectAudioPlay(info.data, info.size);
+    StarfishDirectMediaPlayer_Feed(playerctx, info.data, info.size, 0, DirectMediaFeedAudio);
 
     gst_buffer_unmap(buf, &info);
     gst_sample_unref(sample);
@@ -117,7 +140,8 @@ GstFlowReturn audioNewSample(GstAppSink *appsink, gpointer user_data)
 
 void videoEos(GstAppSink *appsink, gpointer user_data)
 {
-    NDL_DirectVideoClose();
+    videoEosEmitted = true;
+    playerEos();
 }
 
 GstFlowReturn videoNewPreroll(GstAppSink *appsink, gpointer user_data)
@@ -132,8 +156,9 @@ GstFlowReturn videoNewPreroll(GstAppSink *appsink, gpointer user_data)
 
     gst_sample_unref(preroll);
 
-    NDL_DIRECTVIDEO_DATA_INFO info = {width, height};
-    if (NDL_DirectVideoOpen(&info) == -1)
+    DirectMediaVideoConfig config = {width, height};
+    videoConfig = config;
+    if (!playerOpen())
     {
         return GST_FLOW_ERROR;
     }
@@ -149,7 +174,7 @@ GstFlowReturn videoNewSample(GstAppSink *appsink, gpointer user_data)
     GstMapInfo info;
     gst_buffer_map(buf, &info, GST_MAP_READ);
 
-    NDL_DirectVideoPlay(info.data, info.size);
+    StarfishDirectMediaPlayer_Feed(playerctx, info.data, info.size, 0, DirectMediaFeedVideo);
 
     gst_buffer_unmap(buf, &info);
     gst_sample_unref(sample);
@@ -174,4 +199,18 @@ void cb_message(GstBus *bus, GstMessage *message, gpointer user_data)
     default:
         break;
     }
+}
+
+void playerEos()
+{
+    if (audioEos && videoEos)
+    {
+        StarfishDirectMediaPlayer_Close(playerctx);
+    }
+}
+
+bool playerOpen()
+{
+    StarfishDirectMediaPlayer_Open(playerctx, audioConfig, videoConfig);
+    return true;
 }
