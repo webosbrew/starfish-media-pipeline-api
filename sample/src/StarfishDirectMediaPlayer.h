@@ -21,7 +21,7 @@ class StarfishDirectMediaPlayer : public DirectMediaPlayer
 public:
     StarfishDirectMediaPlayer(const std::string &appId);
     ~StarfishDirectMediaPlayer();
-    bool Open(DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig);
+    bool Open(DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId);
     bool Feed(void *data, size_t size, uint64_t pts, DirectMediaFeedType type);
     size_t Flush();
     bool SetVolume(int level);
@@ -37,10 +37,9 @@ private:
     DirectMediaAudioConfig *mAudioConfig;
     DirectMediaVideoConfig *mVideoConfig;
 
-    std::string MakeLoadPayload(uint64_t time);
+    std::string MakeLoadPayload(uint64_t time, const char *windowId);
     void AcbHandler(long acb_id, long task_id, long event_type, long app_state, long play_state,
                     const char *reply);
-    const char *mWindowId;
 };
 #else
 typedef struct StarfishDirectMediaPlayer StarfishDirectMediaPlayer;
@@ -53,7 +52,7 @@ typedef struct StarfishDirectMediaPlayer StarfishDirectMediaPlayer;
 #endif
 
 EXTERNC StarfishDirectMediaPlayer *StarfishDirectMediaPlayer_Create(const char *appId);
-EXTERNC bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig);
+EXTERNC bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId);
 EXTERNC bool StarfishDirectMediaPlayer_Feed(StarfishDirectMediaPlayer *ctx, void *data, size_t size, uint64_t pts, DirectMediaFeedType type);
 EXTERNC size_t StarfishDirectMediaPlayer_Flush(StarfishDirectMediaPlayer *ctx);
 EXTERNC void StarfishDirectMediaPlayer_Close(StarfishDirectMediaPlayer *ctx);

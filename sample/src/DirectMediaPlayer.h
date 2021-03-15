@@ -69,7 +69,7 @@ typedef struct DirectMediaVideoConfig DirectMediaVideoConfig;
 class DirectMediaPlayer
 {
 public:
-    void Open(DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig);
+    void Open(DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId);
     bool Feed(void *data, size_t size, uint64_t pts, DirectMediaFeedType type);
     size_t Flush();
     void Close();

@@ -8,8 +8,6 @@
 
 #include <pbnjson.hpp>
 
-#include "SDL_webOS.h"
-
 namespace pj = pbnjson;
 
 extern "C" void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data);
@@ -34,7 +32,6 @@ StarfishDirectMediaPlayer::StarfishDirectMediaPlayer(const std::string &appId) :
     }
     printf("StarfishDirectMediaPlayer.acb success\n");
 #endif
-    mWindowId = nullptr;
 }
 
 StarfishDirectMediaPlayer::~StarfishDirectMediaPlayer()
@@ -46,14 +43,8 @@ StarfishDirectMediaPlayer::~StarfishDirectMediaPlayer()
     mStarfishMediaAPIs.reset(NULL);
 }
 
-bool StarfishDirectMediaPlayer::Open(DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig)
+bool StarfishDirectMediaPlayer::Open(DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId)
 {
-    mWindowId = SDL_webOSCreateExportedWindow(SDL_WEBOS_EXPORED_WINDOW_TYPE_OPAQUE);
-    SDL_Rect src = {0, 0, (int)videoConfig->width, (int)videoConfig->height};
-    SDL_Rect dst = {0, 0, 1920, 1080};
-    SDL_webOSSetExportedWindow(mWindowId, &src, &dst);
-    SDL_webOSExportedSetProperty(mWindowId, "mute", "off");
-
     mAudioConfig = audioConfig;
     mVideoConfig = videoConfig;
 
@@ -61,7 +52,7 @@ bool StarfishDirectMediaPlayer::Open(DirectMediaAudioConfig *audioConfig, Direct
     mStarfishMediaAPIs->setExternalContext(g_main_context_default());
     ret = mStarfishMediaAPIs->notifyForeground();
 
-    std::string payload = MakeLoadPayload(0);
+    std::string payload = MakeLoadPayload(0, windowId);
     std::cout << payload << std::endl;
     if (!mStarfishMediaAPIs->Load(payload.c_str(), StarfishDirectMediaPlayerLoadCallback, mStarfishMediaAPIs.get()))
     {
@@ -113,14 +104,9 @@ void StarfishDirectMediaPlayer::Close()
 {
     mAudioConfig = nullptr;
     mVideoConfig = nullptr;
-    if (mWindowId)
-    {
-        SDL_webOSDestroyExportedWindow(mWindowId);
-        mWindowId = nullptr;
-    }
 }
 
-std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time)
+std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time, const char *windowId)
 {
     pj::JValue payload = pj::Object();
     pj::JValue args = pj::Array();
@@ -213,7 +199,10 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time)
     option.put("externalStreamingInfo", externalStreamingInfo);
     option.put("lowDelayMode", true);
     option.put("transmission", transmission);
-    option.put("windowId", mWindowId);
+    if (windowId)
+    {
+        option.put("windowId", windowId);
+    }
 
     arg.put("option", option);
     args.append(arg);
@@ -249,9 +238,9 @@ size_t StarfishDirectMediaPlayer_Flush(StarfishDirectMediaPlayer *ctx)
     return ctx->Flush();
 }
 
-bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig)
+bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId)
 {
-    return ctx->Open(audioConfig, videoConfig);
+    return ctx->Open(audioConfig, videoConfig, windowId);
 }
 
 void StarfishDirectMediaPlayer_Close(StarfishDirectMediaPlayer *ctx)
