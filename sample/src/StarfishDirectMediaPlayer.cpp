@@ -12,6 +12,8 @@
 
 namespace pj = pbnjson;
 
+extern "C" void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data);
+
 StarfishDirectMediaPlayer::StarfishDirectMediaPlayer(const std::string &appId) : mAppId(appId)
 {
     mStarfishMediaAPIs.reset(new StarfishMediaAPIs());
@@ -46,10 +48,11 @@ StarfishDirectMediaPlayer::~StarfishDirectMediaPlayer()
 
 bool StarfishDirectMediaPlayer::Open(DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig)
 {
-    printf("Audio: codec = %d, channels = %d, bitsPerChannel = %d, samplesPerSecond = %d\n", audioConfig->codec,
-           audioConfig->channels, audioConfig->bitsPerChannel, audioConfig->samplesPerSecond);
-
-    mWindowId = SDL_webOSCreateExportedWindow(0);
+    mWindowId = SDL_webOSCreateExportedWindow(SDL_WEBOS_EXPORED_WINDOW_TYPE_OPAQUE);
+    SDL_Rect src = {0, 0, (int)videoConfig->width, (int)videoConfig->height};
+    SDL_Rect dst = {0, 0, 1920, 1080};
+    SDL_webOSSetExportedWindow(mWindowId, &src, &dst);
+    SDL_webOSExportedSetProperty(mWindowId, "mute", "off");
 
     mAudioConfig = audioConfig;
     mVideoConfig = videoConfig;
@@ -57,19 +60,17 @@ bool StarfishDirectMediaPlayer::Open(DirectMediaAudioConfig *audioConfig, Direct
     bool ret = false;
     mStarfishMediaAPIs->setExternalContext(g_main_context_default());
     ret = mStarfishMediaAPIs->notifyForeground();
-    std::cout << "notifyForeground returned " << ret << std::endl;
 
     std::string payload = MakeLoadPayload(0);
     std::cout << payload << std::endl;
-    if (!mStarfishMediaAPIs->Load(payload.c_str(), &StarfishDirectMediaPlayer::LoadCallback, this))
+    if (!mStarfishMediaAPIs->Load(payload.c_str(), StarfishDirectMediaPlayerLoadCallback, mStarfishMediaAPIs.get()))
     {
         std::cout << "Load() failed!" << std::endl;
         return false;
     }
-    mStarfishMediaAPIs->Play();
     SetVolume(100);
 
-    std::cout << "Load() succeeded!" << std::endl;
+    std::cout << "Load() succeeded! " << mStarfishMediaAPIs->getMediaID() << std::endl;
     return true;
 }
 
@@ -87,6 +88,11 @@ bool StarfishDirectMediaPlayer::Feed(void *data, size_t size, uint64_t pts, Dire
     std::string json = pbnjson::JGenerator::serialize(payload, pbnjson::JSchemaFragment("{}"));
     std::string result = mStarfishMediaAPIs->Feed(json.c_str());
     return result.find(std::string("Ok"));
+}
+
+size_t StarfishDirectMediaPlayer::Flush()
+{
+    return mStarfishMediaAPIs->flush();
 }
 
 bool StarfishDirectMediaPlayer::SetVolume(int level)
@@ -124,16 +130,20 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time)
     pj::JValue bufferingCtrInfo = pj::Object();
     pj::JValue externalStreamingInfo = pj::Object();
     pj::JValue codec = pj::Object();
+    pj::JValue avSink = pj::Object();
+    pj::JValue audioSink = pj::Object();
+    audioSink.put("type", "main_sound");
+    pj::JValue videoSink = pj::Object();
+    videoSink.put("type", "main_video");
+
+    avSink.put("audioSink", audioSink);
+    avSink.put("videoSink", videoSink);
 
     arg.put("mediaTransportType", "BUFFERSTREAM");
-    option.put("appId", mAppId);
-    option.put("windowId", mWindowId);
     pj::JValue adaptiveStreaming = pj::Object();
     adaptiveStreaming.put("maxWidth", 1920);
     adaptiveStreaming.put("maxHeight", 1080);
-    adaptiveStreaming.put("maxFrameRate", 23.98);
-    option.put("adaptiveStreaming", adaptiveStreaming);
-    option.put("queryPosition", true);
+    adaptiveStreaming.put("maxFrameRate", 60.000);
 
     codec.put("video", DirectMediaVideoCodecNames[mVideoConfig->codec]);
     codec.put("audio", DirectMediaAudioCodecNames[mAudioConfig->codec]);
@@ -163,15 +173,12 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time)
     contents.put("codec", codec);
 
     pj::JValue esInfo = pj::Object();
-    esInfo.put("pauseAtDecodeTime", true);
     esInfo.put("ptsToDecode", static_cast<int64_t>(time));
     esInfo.put("seperatedPTS", true);
-    esInfo.put("videoFpsScale", 1001);
-    esInfo.put("videoFpsValue", 24000);
     contents.put("esInfo", esInfo);
 
     contents.put("format", "RAW");
-    contents.put("provider", "netflix");
+    contents.put("provider", "Chrome");
 
     bufferingCtrInfo.put("bufferMaxLevel", 0);
     bufferingCtrInfo.put("bufferMinLevel", 0);
@@ -180,7 +187,7 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time)
     bufferingCtrInfo.put("qBufferLevelVideo", 0);
 
     pj::JValue srcBufferLevelAudio = pj::Object();
-    srcBufferLevelAudio.put("maximum", 1048576);
+    srcBufferLevelAudio.put("maximum", 2097152);
     srcBufferLevelAudio.put("minimum", 1024);
     bufferingCtrInfo.put("srcBufferLevelAudio", srcBufferLevelAudio);
 
@@ -190,13 +197,24 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time)
     bufferingCtrInfo.put("srcBufferLevelVideo", srcBufferLevelVideo);
 
     externalStreamingInfo.put("contents", contents);
-    externalStreamingInfo.put("restartStreaming", false);
-    externalStreamingInfo.put("streamQualityInfo", true);
-    externalStreamingInfo.put("streamQualityInfoNonFlushable", true);
-    externalStreamingInfo.put("svpVersion", 25);
-    externalStreamingInfo.put("totalStreamSize", 256);
+    // externalStreamingInfo.put("restartStreaming", false);
+    // externalStreamingInfo.put("streamQualityInfo", true);
+    // externalStreamingInfo.put("streamQualityInfoCorruptedFrame", true);
+    // externalStreamingInfo.put("streamQualityInfoNonFlushable", true);
     externalStreamingInfo.put("bufferingCtrInfo", bufferingCtrInfo);
+
+    pj::JValue transmission = pj::JObject();
+    transmission.put("trickType", "client-side");
+
+    option.put("adaptiveStreaming", adaptiveStreaming);
+    option.put("appId", mAppId);
+    option.put("avSink", avSink);
+    // option.put("queryPosition", false);
     option.put("externalStreamingInfo", externalStreamingInfo);
+    option.put("lowDelayMode", true);
+    option.put("transmission", transmission);
+    option.put("windowId", mWindowId);
+
     arg.put("option", option);
     args.append(arg);
     payload.put("args", args);
@@ -208,17 +226,6 @@ void StarfishDirectMediaPlayer::AcbHandler(long acb_id, long task_id, long event
                                            const char *reply)
 {
     printf("AcbHandler event_type: %d, app_state: %d, play_state: %d, reply: %s\n", event_type, app_state, play_state, reply);
-}
-
-void StarfishDirectMediaPlayer::LoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data)
-{
-    StarfishDirectMediaPlayer *player = reinterpret_cast<StarfishDirectMediaPlayer *>(data);
-    printf("LoadCallback type: %d, numValue: %d, strValue: %p\n", type, numValue, strValue);
-    switch (type)
-    {
-    default:
-        break;
-    }
 }
 
 StarfishDirectMediaPlayer *StarfishDirectMediaPlayer_Create(const char *appId)
@@ -237,6 +244,11 @@ bool StarfishDirectMediaPlayer_Feed(StarfishDirectMediaPlayer *ctx, void *data, 
     return ctx->Feed(data, size, pts, type);
 }
 
+size_t StarfishDirectMediaPlayer_Flush(StarfishDirectMediaPlayer *ctx)
+{
+    return ctx->Flush();
+}
+
 bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig)
 {
     return ctx->Open(audioConfig, videoConfig);
@@ -245,4 +257,24 @@ bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaA
 void StarfishDirectMediaPlayer_Close(StarfishDirectMediaPlayer *ctx)
 {
     ctx->Close();
+}
+
+extern "C" void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data)
+{
+    StarfishMediaAPIs *apis = static_cast<StarfishMediaAPIs *>(data);
+    switch (type)
+    {
+    case PF_EVENT_TYPE_STR_ERROR:
+        printf("LoadCallback PF_EVENT_TYPE_STR_ERROR, numValue: %d, strValue: %p\n", numValue, strValue);
+        break;
+    case PF_EVENT_TYPE_INT_ERROR:
+        printf("LoadCallback PF_EVENT_TYPE_INT_ERROR, numValue: %s, strValue: %p\n", numValue, strValue);
+        break;
+    case PF_EVENT_TYPE_STR_RESOURCE_INFO:
+        apis->Play();
+        break;
+    default:
+        printf("LoadCallback type: %d, numValue: %d, strValue: %p\n", type, numValue, strValue);
+        break;
+    }
 }

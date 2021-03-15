@@ -19,10 +19,10 @@ pkg_check_modules(GLIB REQUIRED glib-2.0)
 add_library(playerAPIs SHARED "src/StarfishMediaAPIs_stub.cpp")
 
 set_target_properties(playerAPIs PROPERTIES
-    PUBLIC_HEADER         ${CMAKE_SOURCE_DIR}/StarfishMediaAPIs.h
+    PUBLIC_HEADER         ${CMAKE_CURRENT_SOURCE_DIR}/StarfishMediaAPIs.h
     SOVERSION             "1"
 )
-target_include_directories(playerAPIs SYSTEM PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(playerAPIs SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(playerAPIs SYSTEM PUBLIC ${GLIB_INCLUDE_DIRS})
 target_link_libraries(playerAPIs INTERFACE ${GLIB_LIBRARIES})
 

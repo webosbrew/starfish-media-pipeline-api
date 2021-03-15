@@ -62,6 +62,8 @@
 #include "StarfishDirectMediaPlayer.h"
 #include "VideoSamples.h"
 
+#include <PmLogLib.h>
+
 static const char APPID[] = WEBOS_APPID;
 
 static int exit_requested_;
@@ -805,11 +807,15 @@ void gears_frame(void *userdata)
     gears_draw();
 }
 
+void *playerOpen(void *data);
+pthread_t playerThread;
+
 int main(int argc, char *argv[])
 {
-    setenv("SDL_WEBOS_DEBUG", "1", 1);
-    setenv("GST_DEBUG", "5", 1);
+    // setenv("SDL_WEBOS_DEBUG", "1", 1);
+    // setenv("GST_DEBUG", "5", 1);
     REDIR_STDOUT("starfish-direct");
+    PmLogSetDevMode(true);
 
     playerctx = StarfishDirectMediaPlayer_Create(WEBOS_APPID);
 
@@ -878,15 +884,11 @@ int main(int argc, char *argv[])
     /* Run the main loop */
     if (!native_window)
     {
-        DirectMediaAudioConfig audioConfig = {DirectMediaAudioCodecAAC, 2, 16, 48000};
-        DirectMediaVideoConfig videoConfig = {DirectMediaVideoCodecH264, 1280, 720};
-        StarfishDirectMediaPlayer_Open(playerctx, &audioConfig, &videoConfig);
+        pthread_create(&playerThread, NULL, playerOpen, playerctx);
         while (app_running)
         {
             gears_frame(NULL);
-            StarfishDirectMediaPlayer_Feed(playerctx, k_H264TestFrame, sizeof(k_H264TestFrame), 0, DirectMediaFeedVideo);
         }
-        StarfishDirectMediaPlayer_Close(playerctx);
     }
 
     StarfishDirectMediaPlayer_Destroy(playerctx);
@@ -904,4 +906,18 @@ void request_exit()
 int exit_requested()
 {
     return exit_requested_;
+}
+
+void *playerOpen(void *data)
+{
+    DirectMediaAudioConfig audioConfig = {DirectMediaAudioCodecAAC, 2, 16, 48000};
+    DirectMediaVideoConfig videoConfig = {DirectMediaVideoCodecH264, 1280, 720};
+    StarfishDirectMediaPlayer_Open((StarfishDirectMediaPlayer *)playerctx, &audioConfig, &videoConfig);
+    while (app_running)
+    {
+        StarfishDirectMediaPlayer_Feed(playerctx, k_H264TestFrame, sizeof(k_H264TestFrame), 0, DirectMediaFeedVideo);
+        SDL_Delay(16);
+    }
+    StarfishDirectMediaPlayer_Close(playerctx);
+    return NULL;
 }
