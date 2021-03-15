@@ -51,8 +51,6 @@
 #include <SDL.h>
 #include <SDL_opengles2.h>
 
-#include <gst/gst.h>
-
 #ifndef _MSC_VER
 #include <unistd.h>
 #else
@@ -60,7 +58,9 @@
 #endif
 
 #include "debughelper.h"
-#include "gst_sample.h"
+
+#include "StarfishDirectMediaPlayer.h"
+#include "VideoSamples.h"
 
 static const char APPID[] = WEBOS_APPID;
 
@@ -83,6 +83,8 @@ struct vertex_strip
 
 /* Each vertex consist of GEAR_VERTEX_STRIDE GLfloat attributes */
 typedef GLfloat GearVertex[GEAR_VERTEX_STRIDE];
+
+static StarfishDirectMediaPlayer *playerctx;
 
 /**
  * Struct representing a gear.
@@ -806,11 +808,10 @@ void gears_frame(void *userdata)
 int main(int argc, char *argv[])
 {
     setenv("SDL_WEBOS_DEBUG", "1", 1);
-    setenv("GST_DEBUG", "3", 1);
+    setenv("GST_DEBUG", "5", 1);
     REDIR_STDOUT("starfish-direct");
 
-    gst_sample_create();
-    gst_init(&argc, &argv);
+    playerctx = StarfishDirectMediaPlayer_Create(WEBOS_APPID);
 
     int w, h;
     void *native_window = NULL;
@@ -877,15 +878,18 @@ int main(int argc, char *argv[])
     /* Run the main loop */
     if (!native_window)
     {
-        gst_sample_initialize();
+        DirectMediaAudioConfig audioConfig = {DirectMediaAudioCodecAAC, 2, 16, 48000};
+        DirectMediaVideoConfig videoConfig = {DirectMediaVideoCodecH264, 1280, 720};
+        StarfishDirectMediaPlayer_Open(playerctx, &audioConfig, &videoConfig);
         while (app_running)
         {
             gears_frame(NULL);
+            StarfishDirectMediaPlayer_Feed(playerctx, k_H264TestFrame, sizeof(k_H264TestFrame), 0, DirectMediaFeedVideo);
         }
-        gst_sample_finalize();
+        StarfishDirectMediaPlayer_Close(playerctx);
     }
 
-    gst_sample_destroy();
+    StarfishDirectMediaPlayer_Destroy(playerctx);
 
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
