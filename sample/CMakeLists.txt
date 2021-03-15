@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 
 include(WebOSPackage)
 
-project(starfish-sdl LANGUAGES CXX)
+project(player-sample LANGUAGES CXX)
 set (CMAKE_CXX_STANDARD 11)
 
 find_package(PkgConfig REQUIRED)
@@ -11,27 +11,26 @@ pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
 pkg_check_modules(OpenGL REQUIRED IMPORTED_TARGET egl glesv2)
 pkg_check_modules(json REQUIRED IMPORTED_TARGET json-c pbnjson_cpp)
 
-add_executable(starfish-sdl 
+add_executable(player-sample 
 src/main.c
 src/StarfishDirectMediaPlayer.cpp
 src/SDL_webOS.c
 )
 
-target_compile_definitions(starfish-sdl PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>" _GNU_SOURCE)
-target_include_directories(starfish-sdl PRIVATE ${CMAKE_SOURCE_DIR}/utils/include)
+target_compile_definitions(player-sample PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>" _GNU_SOURCE)
+target_include_directories(player-sample PRIVATE ${CMAKE_SOURCE_DIR}/utils/include)
 
-target_link_libraries(starfish-sdl PRIVATE
+target_link_libraries(player-sample PRIVATE
  PkgConfig::SDL2 PkgConfig::OpenGL PkgConfig::json
- StarfishMediaAPIs
- m dl
+ playerAPIs m dl
 )
 
-set_target_properties(starfish-sdl PROPERTIES
-    WEBOS_APPINFO_ID org.webosbrew.sample.starfish-player.gst-sdl
+set_target_properties(player-sample PROPERTIES
+    WEBOS_APPINFO_ID org.webosbrew.sample.player-apis
     WEBOS_APPINFO_VERSION 0.0.1
     WEBOS_APPINFO_VENDOR "Mariotaku Lee"
     WEBOS_APPINFO_ICON ${CMAKE_CURRENT_SOURCE_DIR}/icon.png
-    WEBOS_APPINFO_TITLE "Starfish"
+    WEBOS_APPINFO_TITLE "playerAPIs"
 )
 
-target_webos_package(starfish-sdl)
+target_webos_package(player-sample)

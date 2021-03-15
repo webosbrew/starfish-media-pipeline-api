@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <glib.h>
+#include <glib-2.0/glib.h>
 
 class StarfishMediaAPIs
 {
