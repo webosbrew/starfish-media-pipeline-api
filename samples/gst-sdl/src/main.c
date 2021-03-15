@@ -44,8 +44,6 @@
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 
-#define _GNU_SOURCE
-
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -807,6 +805,8 @@ void gears_frame(void *userdata)
 
 int main(int argc, char *argv[])
 {
+    setenv("SDL_WEBOS_DEBUG", "1", 1);
+    setenv("GST_DEBUG", "3", 1);
     REDIR_STDOUT("starfish-direct");
 
     gst_sample_create();
@@ -886,6 +886,9 @@ int main(int argc, char *argv[])
     }
 
     gst_sample_destroy();
+
+    SDL_GL_DeleteContext(gl_context);
+    SDL_DestroyWindow(window);
     return 0;
 }
 

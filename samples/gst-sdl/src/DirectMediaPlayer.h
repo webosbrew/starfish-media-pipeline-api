@@ -36,8 +36,8 @@ static const char *DirectMediaVideoCodecNames[DirectMediaVideoCodecCount] = {
 
 enum DirectMediaFeedType
 {
-    DirectMediaFeedAudio,
-    DirectMediaFeedVideo
+    DirectMediaFeedVideo = 0x1,
+    DirectMediaFeedAudio = 0x2,
 };
 
 #ifndef __cplusplus

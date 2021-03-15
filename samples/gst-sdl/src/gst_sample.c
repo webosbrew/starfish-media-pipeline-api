@@ -129,7 +129,7 @@ GstFlowReturn audioNewSample(GstAppSink *appsink, gpointer user_data)
     GstMapInfo info;
     gst_buffer_map(buf, &info, GST_MAP_READ);
 
-    StarfishDirectMediaPlayer_Feed(playerctx, info.data, info.size, 0, DirectMediaFeedAudio);
+    StarfishDirectMediaPlayer_Feed(playerctx, info.data, info.size, buf->pts, DirectMediaFeedAudio);
 
     gst_buffer_unmap(buf, &info);
     gst_sample_unref(sample);
@@ -175,7 +175,7 @@ GstFlowReturn videoNewSample(GstAppSink *appsink, gpointer user_data)
     GstMapInfo info;
     gst_buffer_map(buf, &info, GST_MAP_READ);
 
-    StarfishDirectMediaPlayer_Feed(playerctx, info.data, info.size, 0, DirectMediaFeedVideo);
+    StarfishDirectMediaPlayer_Feed(playerctx, info.data, info.size, buf->pts, DirectMediaFeedVideo);
 
     gst_buffer_unmap(buf, &info);
     gst_sample_unref(sample);
@@ -214,6 +214,13 @@ bool playerOpen()
 {
     if (audioConfig && videoConfig)
     {
+        GstState state;
+        gst_element_get_state(pipeline, &state, NULL, 0);
+        printf("StarfishDirectMediaPlayer_Open， GstState: %d\n", state);
+        if (state != GST_STATE_READY)
+        {
+            return true;
+        }
         return StarfishDirectMediaPlayer_Open(playerctx, audioConfig, videoConfig);
     }
     return true;
