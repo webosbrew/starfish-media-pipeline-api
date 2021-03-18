@@ -59,7 +59,7 @@ bool StarfishDirectMediaPlayer::Open(DirectMediaAudioConfig *audioConfig, Direct
         std::cout << "Load() failed!" << std::endl;
         return false;
     }
-    SetVolume(100);
+    // SetVolume(100);
 
     std::cout << "Load() succeeded! " << mStarfishMediaAPIs->getMediaID() << std::endl;
     return true;
@@ -104,6 +104,7 @@ void StarfishDirectMediaPlayer::Close()
 {
     mAudioConfig = nullptr;
     mVideoConfig = nullptr;
+    mStarfishMediaAPIs->pushEOS();
 }
 
 std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time, const char *windowId)
@@ -117,12 +118,9 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time, const char
     pj::JValue externalStreamingInfo = pj::Object();
     pj::JValue codec = pj::Object();
     pj::JValue avSink = pj::Object();
-    pj::JValue audioSink = pj::Object();
-    audioSink.put("type", "main_sound");
     pj::JValue videoSink = pj::Object();
     videoSink.put("type", "main_video");
 
-    avSink.put("audioSink", audioSink);
     avSink.put("videoSink", videoSink);
 
     arg.put("mediaTransportType", "BUFFERSTREAM");
@@ -132,28 +130,35 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time, const char
     adaptiveStreaming.put("maxFrameRate", 60.000);
 
     codec.put("video", DirectMediaVideoCodecNames[mVideoConfig->codec]);
-    codec.put("audio", DirectMediaAudioCodecNames[mAudioConfig->codec]);
 
-    switch (mAudioConfig->codec)
+    if (mAudioConfig != nullptr)
     {
-    case DirectMediaAudioCodecOpus:
-    {
-        pj::JValue opusInfo = pj::Object();
-        opusInfo.put("channels", std::to_string(mAudioConfig->channels));
-        opusInfo.put("sampleRate", static_cast<double>(mAudioConfig->samplesPerSecond / 1000.f));
-        contents.put("opusInfo", opusInfo);
-        break;
-    }
-    case DirectMediaAudioCodecAAC:
-    {
-        pj::JValue aacInfo = pj::Object();
-        aacInfo.put("channels", mAudioConfig->channels);
-        aacInfo.put("frequency", static_cast<int>(mAudioConfig->samplesPerSecond / 1000.f));
-        aacInfo.put("format", "adts");
-        aacInfo.put("profile", 2);
-        contents.put("aacInfo", aacInfo);
-        break;
-    }
+        pj::JValue audioSink = pj::Object();
+        audioSink.put("type", "main_sound");
+        avSink.put("audioSink", audioSink);
+        codec.put("audio", DirectMediaAudioCodecNames[mAudioConfig->codec]);
+
+        switch (mAudioConfig->codec)
+        {
+        case DirectMediaAudioCodecOpus:
+        {
+            pj::JValue opusInfo = pj::Object();
+            opusInfo.put("channels", std::to_string(mAudioConfig->channels));
+            opusInfo.put("sampleRate", static_cast<double>(mAudioConfig->samplesPerSecond / 1000.f));
+            contents.put("opusInfo", opusInfo);
+            break;
+        }
+        case DirectMediaAudioCodecAAC:
+        {
+            pj::JValue aacInfo = pj::Object();
+            aacInfo.put("channels", mAudioConfig->channels);
+            aacInfo.put("frequency", static_cast<int>(mAudioConfig->samplesPerSecond / 1000.f));
+            aacInfo.put("format", "adts");
+            aacInfo.put("profile", 2);
+            contents.put("aacInfo", aacInfo);
+            break;
+        }
+        }
     }
 
     contents.put("codec", codec);
@@ -164,7 +169,7 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time, const char
     contents.put("esInfo", esInfo);
 
     contents.put("format", "RAW");
-    contents.put("provider", "Chrome");
+    // contents.put("provider", "Chrome");
 
     bufferingCtrInfo.put("bufferMaxLevel", 0);
     bufferingCtrInfo.put("bufferMinLevel", 0);
@@ -190,7 +195,7 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time, const char
     externalStreamingInfo.put("bufferingCtrInfo", bufferingCtrInfo);
 
     pj::JValue transmission = pj::JObject();
-    transmission.put("trickType", "client-side");
+    transmission.put("contentsType", "WEBRTC");
 
     option.put("adaptiveStreaming", adaptiveStreaming);
     option.put("appId", mAppId);
@@ -199,6 +204,7 @@ std::string StarfishDirectMediaPlayer::MakeLoadPayload(uint64_t time, const char
     option.put("externalStreamingInfo", externalStreamingInfo);
     option.put("lowDelayMode", true);
     option.put("transmission", transmission);
+    option.put("needAudio", mAudioConfig != nullptr);
     if (windowId)
     {
         option.put("windowId", windowId);
@@ -228,9 +234,22 @@ void StarfishDirectMediaPlayer_Destroy(StarfishDirectMediaPlayer *ctx)
     delete ctx;
 }
 
-bool StarfishDirectMediaPlayer_Feed(StarfishDirectMediaPlayer *ctx, void *data, size_t size, uint64_t pts, DirectMediaFeedType type)
+static void print_bytes(const void *ptr, int size)
 {
-    return ctx->Feed(data, size, pts, type);
+    const unsigned char *p = (const unsigned char *)ptr;
+    int i;
+    for (i = 0; i < size; i++)
+    {
+        fprintf(stdout, "%02hhX ", p[i]);
+    }
+    fprintf(stdout, "\n");
+}
+
+bool StarfishDirectMediaPlayer_Feed(StarfishDirectMediaPlayer *ctx, const void *data, size_t size, uint64_t pts, DirectMediaFeedType type)
+{
+    if (type == DirectMediaFeedVideo)
+    print_bytes(data, size > 16 ? 16 : size);
+    return ctx->Feed((void *)data, size, pts, type);
 }
 
 size_t StarfishDirectMediaPlayer_Flush(StarfishDirectMediaPlayer *ctx)
@@ -250,7 +269,6 @@ void StarfishDirectMediaPlayer_Close(StarfishDirectMediaPlayer *ctx)
 
 extern "C" void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data)
 {
-    StarfishMediaAPIs *apis = static_cast<StarfishMediaAPIs *>(data);
     switch (type)
     {
     case PF_EVENT_TYPE_STR_ERROR:
@@ -259,8 +277,8 @@ extern "C" void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue
     case PF_EVENT_TYPE_INT_ERROR:
         printf("LoadCallback PF_EVENT_TYPE_INT_ERROR, numValue: %s, strValue: %p\n", numValue, strValue);
         break;
-    case PF_EVENT_TYPE_STR_RESOURCE_INFO:
-        apis->Play();
+    case PF_EVENT_TYPE_STR_BUFFERFULL:
+        printf("PF_EVENT_TYPE_STR_BUFFERFULL\n");
         break;
     default:
         printf("LoadCallback type: %d, numValue: %d, strValue: %p\n", type, numValue, strValue);

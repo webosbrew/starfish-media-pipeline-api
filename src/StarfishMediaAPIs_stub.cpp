@@ -1,6 +1,6 @@
 #include <StarfishMediaAPIs.h>
 
-StarfishMediaAPIs::StarfishMediaAPIs(const char *appId)
+StarfishMediaAPIs::StarfishMediaAPIs(const char *uid)
 {
 }
 
@@ -94,9 +94,4 @@ bool StarfishMediaAPIs::Unload()
 
 void StarfishMediaAPIs::setExternalContext(GMainContext *)
 {
-}
-
-bool StarfishMediaAPIs::unsetExternalContext()
-{
-    return false;
 }

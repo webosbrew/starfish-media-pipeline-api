@@ -6,7 +6,7 @@
 class StarfishMediaAPIs
 {
 public:
-    StarfishMediaAPIs(const char *appId = nullptr);
+    StarfishMediaAPIs(const char *uid = nullptr);
     ~StarfishMediaAPIs();
 
     std::string Feed(const char *payload);
@@ -27,7 +27,7 @@ public:
     bool setVolume(const char *);
     bool Unload();
     void setExternalContext(GMainContext *);
-    bool unsetExternalContext();
+    void unsetExternalContext();
 };
 
 enum PF_EVENT_T

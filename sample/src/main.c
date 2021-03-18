@@ -62,6 +62,7 @@
 #include "StarfishDirectMediaPlayer.h"
 #include "VideoSamples.h"
 
+#include <pthread.h>
 #include <PmLogLib.h>
 
 static const char APPID[] = WEBOS_APPID;
@@ -810,6 +811,8 @@ void gears_frame(void *userdata)
 void *playerOpen(void *data);
 pthread_t playerThread;
 
+const char *windowId;
+
 int main(int argc, char *argv[])
 {
     // setenv("SDL_WEBOS_DEBUG", "1", 1);
@@ -862,6 +865,8 @@ int main(int argc, char *argv[])
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
+    windowId = SDL_webOSCreateExportedWindow(3);
+
     gl_context = SDL_GL_CreateContext(window);
     if (gl_context == NULL)
     {
@@ -892,6 +897,7 @@ int main(int argc, char *argv[])
     }
 
     StarfishDirectMediaPlayer_Destroy(playerctx);
+    SDL_webOSDestroyExportedWindow(windowId);
 
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
@@ -912,7 +918,7 @@ void *playerOpen(void *data)
 {
     DirectMediaAudioConfig audioConfig = {DirectMediaAudioCodecAAC, 2, 16, 48000};
     DirectMediaVideoConfig videoConfig = {DirectMediaVideoCodecH264, 1280, 720};
-    StarfishDirectMediaPlayer_Open((StarfishDirectMediaPlayer *)playerctx, &audioConfig, &videoConfig);
+    StarfishDirectMediaPlayer_Open((StarfishDirectMediaPlayer *)playerctx, &audioConfig, &videoConfig, windowId);
     while (app_running)
     {
         StarfishDirectMediaPlayer_Feed(playerctx, k_H264TestFrame, sizeof(k_H264TestFrame), 0, DirectMediaFeedVideo);
