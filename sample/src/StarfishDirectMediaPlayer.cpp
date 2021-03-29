@@ -10,7 +10,7 @@
 
 namespace pj = pbnjson;
 
-extern "C" void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data);
+static void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data);
 
 StarfishDirectMediaPlayer::StarfishDirectMediaPlayer(const std::string &appId) : mAppId(appId)
 {
@@ -223,51 +223,8 @@ void StarfishDirectMediaPlayer::AcbHandler(long acb_id, long task_id, long event
     printf("AcbHandler event_type: %d, app_state: %d, play_state: %d, reply: %s\n", event_type, app_state, play_state, reply);
 }
 
-StarfishDirectMediaPlayer *StarfishDirectMediaPlayer_Create(const char *appId)
-{
-    StarfishDirectMediaPlayer *player = new StarfishDirectMediaPlayer(appId);
-    return player;
-}
 
-void StarfishDirectMediaPlayer_Destroy(StarfishDirectMediaPlayer *ctx)
-{
-    delete ctx;
-}
-
-static void print_bytes(const void *ptr, int size)
-{
-    const unsigned char *p = (const unsigned char *)ptr;
-    int i;
-    for (i = 0; i < size; i++)
-    {
-        fprintf(stdout, "%02hhX ", p[i]);
-    }
-    fprintf(stdout, "\n");
-}
-
-bool StarfishDirectMediaPlayer_Feed(StarfishDirectMediaPlayer *ctx, const void *data, size_t size, uint64_t pts, DirectMediaFeedType type)
-{
-    if (type == DirectMediaFeedVideo)
-    print_bytes(data, size > 16 ? 16 : size);
-    return ctx->Feed((void *)data, size, pts, type);
-}
-
-size_t StarfishDirectMediaPlayer_Flush(StarfishDirectMediaPlayer *ctx)
-{
-    return ctx->Flush();
-}
-
-bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId)
-{
-    return ctx->Open(audioConfig, videoConfig, windowId);
-}
-
-void StarfishDirectMediaPlayer_Close(StarfishDirectMediaPlayer *ctx)
-{
-    ctx->Close();
-}
-
-extern "C" void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data)
+static void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data)
 {
     switch (type)
     {
