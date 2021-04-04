@@ -1,45 +1,51 @@
 #include "StarfishDirectMediaPlayer_C.h"
 
-static void print_bytes(const void *ptr, int size)
+struct StarfishMediaPlayerWrapper
 {
-    const unsigned char *p = (const unsigned char *)ptr;
-    int i;
-    for (i = 0; i < size; i++)
+    StarfishMediaPlayerWrapper(const char *appid)
     {
-        fprintf(stdout, "%02hhX ", p[i]);
-    }
-    fprintf(stdout, "\n");
+        player = new StarfishDirectMediaPlayer(appid);
+    };
+    ~StarfishMediaPlayerWrapper()
+    {
+        delete player;
+    };
+
+    StarfishDirectMediaPlayer *player;
+};
+
+StarfishDirectMediaPlayerHandle StarfishDirectMediaPlayer_Create(const char *appId)
+{
+    StarfishMediaPlayerWrapper *wrapper = new StarfishMediaPlayerWrapper(appId);
+    return (StarfishDirectMediaPlayerHandle)wrapper;
 }
 
-bool StarfishDirectMediaPlayer_Feed(StarfishDirectMediaPlayer *ctx, const void *data, size_t size, uint64_t pts, DirectMediaFeedType type)
+void StarfishDirectMediaPlayer_Destroy(StarfishDirectMediaPlayerHandle hnd)
 {
-    if (type == DirectMediaFeedVideo)
-        print_bytes(data, size > 16 ? 16 : size);
-    return ctx->Feed((void *)data, size, pts, type);
+    StarfishMediaPlayerWrapper *wrapper = (StarfishMediaPlayerWrapper *)hnd;
+    delete wrapper;
 }
 
-size_t StarfishDirectMediaPlayer_Flush(StarfishDirectMediaPlayer *ctx)
+bool StarfishDirectMediaPlayer_Feed(StarfishDirectMediaPlayerHandle hnd, const void *data, size_t size, uint64_t pts, DirectMediaFeedType type)
 {
-    return ctx->Flush();
+    StarfishMediaPlayerWrapper *wrapper = (StarfishMediaPlayerWrapper *)hnd;
+    return wrapper->player->Feed((void *)data, size, pts, type);
 }
 
-bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayer *ctx, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId)
+size_t StarfishDirectMediaPlayer_Flush(StarfishDirectMediaPlayerHandle hnd)
 {
-    return ctx->Open(audioConfig, videoConfig, windowId);
+    StarfishMediaPlayerWrapper *wrapper = (StarfishMediaPlayerWrapper *)hnd;
+    return wrapper->player->Flush();
 }
 
-void StarfishDirectMediaPlayer_Close(StarfishDirectMediaPlayer *ctx)
+bool StarfishDirectMediaPlayer_Open(StarfishDirectMediaPlayerHandle hnd, DirectMediaAudioConfig *audioConfig, DirectMediaVideoConfig *videoConfig, const char *windowId)
 {
-    ctx->Close();
+    StarfishMediaPlayerWrapper *wrapper = (StarfishMediaPlayerWrapper *)hnd;
+    return wrapper->player->Open(audioConfig, videoConfig, windowId);
 }
 
-StarfishDirectMediaPlayer *StarfishDirectMediaPlayer_Create(const char *appId)
+void StarfishDirectMediaPlayer_Close(StarfishDirectMediaPlayerHandle hnd)
 {
-    StarfishDirectMediaPlayer *player = new StarfishDirectMediaPlayer(appId);
-    return player;
-}
-
-void StarfishDirectMediaPlayer_Destroy(StarfishDirectMediaPlayer *ctx)
-{
-    delete ctx;
+    StarfishMediaPlayerWrapper *wrapper = (StarfishMediaPlayerWrapper *)hnd;
+    wrapper->player->Close();
 }

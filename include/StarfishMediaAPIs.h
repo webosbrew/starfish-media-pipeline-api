@@ -28,6 +28,9 @@ public:
     bool Unload();
     void setExternalContext(GMainContext *);
     void unsetExternalContext();
+
+private:
+    char padding[0xb8];
 };
 
 enum PF_EVENT_T

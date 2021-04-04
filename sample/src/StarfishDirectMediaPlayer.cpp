@@ -6,6 +6,8 @@
 #include <functional>
 #include <iostream>
 
+#include <pthread.h>
+
 #include <pbnjson.hpp>
 
 namespace pj = pbnjson;
@@ -15,6 +17,7 @@ static void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, co
 StarfishDirectMediaPlayer::StarfishDirectMediaPlayer(const std::string &appId) : mAppId(appId)
 {
     mStarfishMediaAPIs.reset(new StarfishMediaAPIs());
+    mStarfishMediaAPIs->setExternalContext(g_main_context_default());
 #if USE_ACB
     mAcbClient.reset(new Acb());
     if (!mAcbClient)
@@ -49,7 +52,6 @@ bool StarfishDirectMediaPlayer::Open(DirectMediaAudioConfig *audioConfig, Direct
     mVideoConfig = videoConfig;
 
     bool ret = false;
-    mStarfishMediaAPIs->setExternalContext(g_main_context_default());
     ret = mStarfishMediaAPIs->notifyForeground();
 
     std::string payload = MakeLoadPayload(0, windowId);
@@ -222,7 +224,6 @@ void StarfishDirectMediaPlayer::AcbHandler(long acb_id, long task_id, long event
 {
     printf("AcbHandler event_type: %d, app_state: %d, play_state: %d, reply: %s\n", event_type, app_state, play_state, reply);
 }
-
 
 static void StarfishDirectMediaPlayerLoadCallback(gint type, gint64 numValue, const gchar *strValue, void *data)
 {

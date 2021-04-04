@@ -41,6 +41,4 @@ private:
     void AcbHandler(long acb_id, long task_id, long event_type, long app_state, long play_state,
                     const char *reply);
 };
-#else
-typedef struct StarfishDirectMediaPlayer StarfishDirectMediaPlayer;
 #endif
