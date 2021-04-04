@@ -1,3 +1,4 @@
+#include <glib-2.0/glib.h>
 #include <StarfishMediaAPIs.h>
 
 StarfishMediaAPIs::StarfishMediaAPIs(const char *uid)
@@ -37,12 +38,12 @@ const char *StarfishMediaAPIs::getVolume()
     return nullptr;
 }
 
-bool StarfishMediaAPIs::Load(const char *payload, void(callback)(gint type, gint64 numValue, const gchar *strValue))
+bool StarfishMediaAPIs::Load(const char *payload, void(callback)(int type, int64_t numValue, const char *strValue))
 {
     return false;
 }
 
-bool StarfishMediaAPIs::Load(const char *payload, void(callback)(gint type, gint64 numValue, const gchar *strValue, void *data), void *data)
+bool StarfishMediaAPIs::Load(const char *payload, void(callback)(int type, int64_t numValue, const char *strValue, void *data), void *data)
 {
     return false;
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <glib-2.0/glib.h>
 
 class StarfishMediaAPIs
 {
@@ -15,8 +14,8 @@ public:
     void getCurrentPlaytime();
     const char *getMediaID();
     const char *getVolume();
-    bool Load(const char *payload, void(callback)(gint type, gint64 numValue, const gchar *strValue));
-    bool Load(const char *payload, void(callback)(gint type, gint64 numValue, const gchar *strValue, void *data), void *data);
+    bool Load(const char *payload, void(callback)(int type, int64_t numValue, const char *strValue));
+    bool Load(const char *payload, void(callback)(int type, int64_t numValue, const char *strValue, void *data), void *data);
     bool notifyBackground();
     bool notifyForeground();
     bool Pause();
@@ -26,8 +25,10 @@ public:
     bool setTimeToDecode(const char *);
     bool setVolume(const char *);
     bool Unload();
+#ifdef __G_MAIN_H__
     void setExternalContext(GMainContext *);
     void unsetExternalContext();
+#endif
 
 private:
     char padding[0xb8];
