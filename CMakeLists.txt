@@ -14,8 +14,7 @@ set_target_properties(playerAPIs PROPERTIES
     SOVERSION             "1"
 )
 target_include_directories(playerAPIs SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(playerAPIs SYSTEM PUBLIC ${GLIB_INCLUDE_DIRS})
-target_link_libraries(playerAPIs INTERFACE dl ${GLIB_LIBRARIES})
+target_include_directories(playerAPIs SYSTEM PRIVATE ${GLIB_INCLUDE_DIRS})
 
 # Don't include samples if used as library
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
